@@ -6,7 +6,7 @@ import type { useGitProvider } from './useGitProvider'
 import { createSharedComposable } from './createSharedComposable'
 import { useDraftBase } from './useDraftBase'
 import { mediaStorage as storage } from '../utils/storage'
-import { getFileExtension, slugifyFileName } from '../utils/file'
+import { formatBytes, getFileExtension, slugifyFileName } from '../utils/file'
 import { useHooks } from './useHooks'
 import { useError } from './useError'
 import { consola } from 'consola'
@@ -56,6 +56,22 @@ export const useDraftMedias = createSharedComposable((host: StudioHost, gitProvi
     catch (error) {
       showError('Error creating folder', (error as Error).message)
     }
+  }
+
+  function isUploadable(file: File): boolean {
+    const { maxFileSize, allowedTypes } = host.meta.media || {}
+
+    if (maxFileSize && file.size > maxFileSize) {
+      showError('Error uploading media', `${file.name} is ${formatBytes(file.size)}, the maximum is ${formatBytes(maxFileSize)}`)
+      return false
+    }
+
+    if (allowedTypes && !allowedTypes.some(type => file.type.startsWith(type.replace('*', '')))) {
+      showError('Error uploading media', `${file.name} has an unsupported type (${file.type || 'unknown'})`)
+      return false
+    }
+
+    return true
   }
 
   async function upload(parentFsPath: string, file: File) {
@@ -197,6 +213,7 @@ export const useDraftMedias = createSharedComposable((host: StudioHost, gitProvi
     load,
     selectByFsPath,
     unselect,
+    isUploadable,
     upload,
     listAsRawFiles,
     getStatus,

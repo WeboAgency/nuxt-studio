@@ -149,6 +149,13 @@ export const useContext = createSharedComposable((
       await activeTree.value.selectItemByFsPath(draftItem.fsPath)
     },
     [StudioItemActionId.UploadMedia]: async ({ parentFsPath, files }: UploadMediaParams) => {
+      const mediaDraft = activeTree.value.draft as ReturnType<typeof useDraftMedias>
+      const uploadableFiles = files.filter(mediaDraft.isUploadable)
+      if (uploadableFiles.length === 0) {
+        unsetActionInProgress()
+        return
+      }
+
       // Remove .gitkeep draft in folder if exists
       const gitkeepFsPath = parentFsPath === '/' ? '.gitkeep' : joinURL(parentFsPath, '.gitkeep')
       const gitkeepDraft = await activeTree.value.draft.get(gitkeepFsPath)
@@ -156,8 +163,8 @@ export const useContext = createSharedComposable((
         await activeTree.value.draft.remove([gitkeepFsPath], { rerender: false })
       }
 
-      for (const file of files) {
-        await (activeTree.value.draft as ReturnType<typeof useDraftMedias>).upload(parentFsPath, file)
+      for (const file of uploadableFiles) {
+        await mediaDraft.upload(parentFsPath, file)
       }
 
       unsetActionInProgress()

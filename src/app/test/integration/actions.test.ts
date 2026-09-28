@@ -784,6 +784,45 @@ describe('Media - Action Chains Integration Tests', () => {
     expect(context.actionInProgress.value).toEqual({ id: StudioItemActionId.UploadMedia })
   })
 
+  it('Upload > Skips files over the size limit or with a disallowed type', async () => {
+    mockHost.meta.media = { external: false, maxFileSize: 1024, allowedTypes: ['image/*'] }
+
+    try {
+      await context.itemActionHandler[StudioItemActionId.UploadMedia]({
+        parentFsPath: parentPath,
+        files: [
+          createMockFile('too-large.png', { size: 2048 }),
+          createMockFile('document.pdf', { type: 'application/pdf' }),
+          createMockFile(mediaName),
+        ],
+      })
+
+      expect(context.activeTree.value.draft.list.value.map(item => item.fsPath)).toEqual([mediaFsPath])
+      expect(context.actionInProgress.value).toBeNull()
+    }
+    finally {
+      mockHost.meta.media = undefined
+    }
+  })
+
+  it('CreateMediaFolder > Upload rejected file keeps the folder', async () => {
+    mockHost.meta.media = { external: false, maxFileSize: 1024 }
+    const gitkeepFsPath = joinURL('media-folder', '.gitkeep')
+
+    try {
+      await context.itemActionHandler[StudioItemActionId.CreateMediaFolder]({ fsPath: 'media-folder' })
+      await context.itemActionHandler[StudioItemActionId.UploadMedia]({
+        parentFsPath: 'media-folder',
+        files: [createMockFile('too-large.png', { size: 2048 })],
+      })
+
+      expect(context.activeTree.value.draft.list.value.map(item => item.fsPath)).toEqual([gitkeepFsPath])
+    }
+    finally {
+      mockHost.meta.media = undefined
+    }
+  })
+
   it('Upload > Rename', async () => {
     const consoleInfoSpy = vi.spyOn(console, 'info')
     const file = createMockFile(mediaName)
