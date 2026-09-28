@@ -94,18 +94,20 @@ function fetchFromIndexedDB(event, url) {
       return fetch('https://placehold.co/1200x800?text=Deleted');
     }
 
+    // Created or renamed file, checked first as a renamed file's original path may no longer exist
+    const parsed = dbItem.modified?.raw ? parseDataUrl(dbItem.modified.raw) : null;
+    if (parsed) {
+      return new Response(base64ToUint8Array(parsed.base64), {
+        headers: { 'Content-Type': parsed.mime }
+      });
+    }
+
     // Renamed file
     if (dbItem.original?.path) {
       return fetch(dbItem.original.path);
     }
 
-    // Created file
-    const parsed = parseDataUrl(dbItem.modified.raw);
-    const bytes = base64ToUint8Array(parsed.base64);
-
-    return new Response(bytes, {
-      headers: { 'Content-Type': parsed.mime }
-    });
+    return fetch(event.request);
   }).catch(() => fetch(event.request))
 }
 

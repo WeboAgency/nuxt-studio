@@ -101,6 +101,7 @@ export const mockResizeDataURL = () => {
 export const setupMediaMocks = () => {
   const fileReader = mockFileToDataUrl()
   const { mockCanvas, mockImage } = mockResizeDataURL()
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(new Blob()))
 
   return {
     fileReader,

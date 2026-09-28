@@ -112,10 +112,14 @@ export const useDraftMedias = createSharedComposable((host: StudioHost, gitProvi
         throw new Error(`Database item not found for document fsPath: ${fsPath}`)
       }
 
+      // Committed files carry no bytes in the db item, read them before the file is removed
+      const raw = existingDraftToRename?.modified?.raw || currentDbItem.raw || await fetchAsDataUrl(withLeadingSlash(fsPath))
+
       await remove([fsPath], { rerender: false })
 
       const newDbItem: MediaItem = {
         ...currentDbItem,
+        raw,
         fsPath: newFsPath,
         id: joinURL(VIRTUAL_MEDIA_COLLECTION_NAME, newFsPath),
         stem: generateStemFromFsPath(newFsPath),
@@ -128,6 +132,10 @@ export const useDraftMedias = createSharedComposable((host: StudioHost, gitProvi
       if (existingDraftToRename) {
         originalDbItem = existingDraftToRename.original
       }
+      if (originalDbItem) {
+        // Dev mode restores the original file from these bytes on revert
+        originalDbItem = { ...originalDbItem, raw }
+      }
 
       await create(newFsPath, newDbItem, originalDbItem, { rerender: false })
     }
@@ -135,7 +143,16 @@ export const useDraftMedias = createSharedComposable((host: StudioHost, gitProvi
     await hooks.callHook('studio:draft:media:updated', { caller: 'useDraftMedias.rename' })
   }
 
-  function fileToDataUrl(file: File): Promise<string> {
+  async function fetchAsDataUrl(path: string): Promise<string> {
+    const response = await fetch(path)
+    if (!response.ok) {
+      throw new Error(`Cannot read media file: ${path}`)
+    }
+
+    return fileToDataUrl(await response.blob())
+  }
+
+  function fileToDataUrl(file: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.readAsDataURL(file)

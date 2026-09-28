@@ -6,7 +6,7 @@ import { isValidAttr, stripBindingPrefix } from './props'
 import { isElement, isComment, getTag, getAttrs, getChildren } from '../comark'
 import { sameMark, type MarkInfo } from './tiptapToComark'
 
-type ComarkToTipTapMap = Record<string, (node: ElementNode) => JSONContent | JSONContent[]>
+type ComarkToTipTapMap = Record<string, (node: ElementNode, parentTag?: string) => JSONContent | JSONContent[]>
 
 const tagToMark: Record<string, string> = {
   strong: 'bold',
@@ -28,7 +28,7 @@ const comarkToTiptapMap: ComarkToTipTapMap = {
   video: node => createVideoTipTapNode(node),
   template: node => createTemplateNode(node),
   pre: node => createPreNode(node),
-  p: node => createParagraphNode(node),
+  p: (node, parentTag) => createParagraphNode(node, parentTag),
   span: node => createSpanStyleNode(node),
   h1: node => createTipTapNode(node, 'heading', { attrs: { level: 1 } }),
   h2: node => createTipTapNode(node, 'heading', { attrs: { level: 2 } }),
@@ -114,7 +114,7 @@ export function comarkNodeToTiptap(node: MarkdownNode, parentTag?: string, hasNu
    * Known node types
    */
   if (comarkToTiptapMap[tagStr]) {
-    return comarkToTiptapMap[tagStr](node as ElementNode)
+    return comarkToTiptapMap[tagStr](node as ElementNode, parentTag)
   }
 
   /**
@@ -354,8 +354,14 @@ function createPreNode(node: ElementNode): JSONContent {
   return tiptapNode
 }
 
-function createParagraphNode(node: ElementNode): JSONContent {
+function createParagraphNode(node: ElementNode, parentTag?: string): JSONContent {
   const children = getChildren(node).filter(child => !(typeof child === 'string' && !child))
+
+  // TipTap images are block nodes, a paragraph can't hold one (list items must start with a paragraph)
+  const [child] = children
+  if (parentTag !== 'li' && children.length === 1 && isElement(child) && getTag(child) === 'img' && isEmpty(getAttrs(node))) {
+    return comarkNodeToTiptap(child) as JSONContent
+  }
 
   // Flatten children (e.g., from createMark which returns arrays)
   const content = children.flatMap(child => comarkNodeToTiptap(child, 'p'))

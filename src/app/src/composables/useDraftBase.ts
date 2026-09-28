@@ -102,14 +102,14 @@ export function useDraftBase<T extends DatabaseItem | MediaItem>(
       if (!devMode.value && !isExternalMedia) {
         let deleteDraftItem: DraftItem<T> | null = null
         if (existingDraftItem) {
-          if (existingDraftItem.status === DraftStatus.Deleted) return
+          if (existingDraftItem.status === DraftStatus.Deleted) continue
 
           if (existingDraftItem.status === DraftStatus.Created) {
             list.value = list.value.filter(item => item.fsPath !== fsPath)
           }
           else {
             // TODO: check if remote file has been updated
-            const remoteFile = await gitProvider.api.fetchFile(joinURL('content', fsPath), { cached: true }) as GitFile
+            const remoteFile = await gitProvider.api.fetchFile(joinURL(remotePathPrefix, fsPath), { cached: true }) as GitFile
 
             deleteDraftItem = {
               fsPath: existingDraftItem.fsPath,
@@ -123,7 +123,7 @@ export function useDraftBase<T extends DatabaseItem | MediaItem>(
         }
         else {
         // TODO: check if gh file has been updated
-          const remoteFile = await gitProvider.api.fetchFile(joinURL('content', fsPath), { cached: true }) as GitFile
+          const remoteFile = await gitProvider.api.fetchFile(joinURL(remotePathPrefix, fsPath), { cached: true }) as GitFile
 
           deleteDraftItem = {
             fsPath,
@@ -162,7 +162,14 @@ export function useDraftBase<T extends DatabaseItem | MediaItem>(
 
         // Renamed draft
         if (existingItem.original) {
-          await revert(existingItem.original.fsPath!, { rerender: false })
+          // Dev mode keeps no draft for the original path, restore it directly
+          if (devMode.value) {
+            // @ts-expect-error upsert type is wrong, second param should be DatabaseItem | MediaItem
+            await hostDb.upsert(existingItem.original.fsPath!, existingItem.original)
+          }
+          else {
+            await revert(existingItem.original.fsPath!, { rerender: false })
+          }
         }
       }
       else {

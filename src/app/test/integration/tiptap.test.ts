@@ -7,7 +7,8 @@ import { comarkToTiptap } from '../../src/utils/tiptap/comarkToTiptap'
 import { tiptapToComark } from '../../src/utils/tiptap/tiptapToComark'
 import type { MarkdownDocument, Node as MarkdownNode } from 'comark'
 import shiki, { resetHighlighter } from 'comark/plugins/shiki'
-import { roundTripThroughEditor } from '../utils/editor'
+import { GapCursor } from '@tiptap/pm/gapcursor'
+import { createEditor, roundTripThroughEditor } from '../utils/editor'
 
 describe('paragraph', () => {
   test('simple paragraph', async () => {
@@ -1833,18 +1834,13 @@ describe('images', () => {
           },
         },
         {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'image',
-              attrs: {
-                props: {
-                  src: 'https://example.com/image.jpg',
-                  alt: 'Alt text',
-                },
-              },
+          type: 'image',
+          attrs: {
+            props: {
+              src: 'https://example.com/image.jpg',
+              alt: 'Alt text',
             },
-          ],
+          },
         },
       ],
     }
@@ -1887,19 +1883,14 @@ describe('images', () => {
           },
         },
         {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'image',
-              attrs: {
-                props: {
-                  src: 'https://example.com/image.jpg',
-                  alt: 'Alt text',
-                  title: 'Image title',
-                },
-              },
+          type: 'image',
+          attrs: {
+            props: {
+              src: 'https://example.com/image.jpg',
+              alt: 'Alt text',
+              title: 'Image title',
             },
-          ],
+          },
         },
       ],
     }
@@ -1943,20 +1934,15 @@ describe('images', () => {
           },
         },
         {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'image',
-              attrs: {
-                props: {
-                  src: 'https://example.com/image.jpg',
-                  alt: 'Alt text',
-                  width: '800',
-                  height: '600',
-                },
-              },
+          type: 'image',
+          attrs: {
+            props: {
+              src: 'https://example.com/image.jpg',
+              alt: 'Alt text',
+              width: '800',
+              height: '600',
             },
-          ],
+          },
         },
       ],
     }
@@ -1980,6 +1966,56 @@ describe('images', () => {
     const outputContent = await contentFromDocument(generatedDocument)
 
     expect(outputContent).toBe(`${inputContent}\n`)
+  })
+
+  test('block image dropped before a component keeps the component', async () => {
+    const inputContent = `::ui-container
+:::ui-section-heading{label="colors"}
+:::
+::
+
+::ui-section-heading{label="root"}
+::`
+
+    const image: JSONContent = { type: 'image', attrs: { props: { src: '/image.jpg', alt: 'image' } } }
+
+    const document = await documentFromContent('test.md', inputContent) as DatabasePageItem
+    const tiptapJSON = comarkToTiptap(document.body)
+
+    // Drag and drop (or the image picker) inserts a block image next to the component
+    tiptapJSON.content![1].content![0].content!.unshift(image)
+    tiptapJSON.content!.splice(2, 0, image)
+
+    const rtComarkTree = await tiptapToComark(roundTripThroughEditor(tiptapJSON))
+    const generatedDocument = createMockDocument('docs/test.md', {
+      body: rtComarkTree,
+      ...rtComarkTree.frontmatter,
+    })
+
+    const outputContent = await contentFromDocument(generatedDocument)
+    const reparsed = await documentFromContent('test.md', outputContent!) as DatabasePageItem
+
+    expect(reparsed.body.nodes).toMatchObject([
+      ['ui-container', {}, ['p', {}, ['img', { src: '/image.jpg' }]], ['ui-section-heading', { label: 'colors' }]],
+      ['p', {}, ['img', { src: '/image.jpg' }]],
+      ['ui-section-heading', { label: 'root' }],
+    ])
+  })
+
+  test('content can be added below an image that ends the document', async () => {
+    const document = await documentFromContent('test.md', 'Text\n\n![Alt text](https://example.com/image.jpg)') as DatabasePageItem
+    const editor = createEditor(comarkToTiptap(document.body))
+
+    // Clicking below the image places a gap cursor there
+    const $end = editor.state.doc.resolve(editor.state.doc.content.size)
+    editor.view.dispatch(editor.state.tr.setSelection(new GapCursor($end)))
+    editor.commands.insertContent({ type: 'text', text: 'After' })
+
+    expect(editor.getJSON().content!.slice(-2)).toMatchObject([
+      { type: 'image' },
+      { type: 'paragraph', content: [{ type: 'text', text: 'After' }] },
+    ])
+    editor.destroy()
   })
 })
 
@@ -2774,18 +2810,13 @@ text 1
                   ],
                 },
                 {
-                  type: 'paragraph',
-                  content: [
-                    {
-                      type: 'image',
-                      attrs: {
-                        props: {
-                          src: 'https://example.com/image.jpg',
-                          alt: 'Image',
-                        },
-                      },
+                  type: 'image',
+                  attrs: {
+                    props: {
+                      src: 'https://example.com/image.jpg',
+                      alt: 'Image',
                     },
-                  ],
+                  },
                 },
               ],
             },

@@ -17,12 +17,12 @@ export interface MediaItemKeyFields {
 
 // `key` must be a raw, unprefixed storage key — strip VIRTUAL_MEDIA_COLLECTION_NAME first if present
 export function mediaItemFieldsFromKey(key: string): MediaItemKeyFields {
-  const fsPath = withLeadingSlash(key.replace(/:/g, '/'))
+  const fsPath = key.replace(/:/g, '/')
   return {
     id: generateIdFromFsPath(fsPath),
     extension: key.split('.').pop() || '',
     stem: fsPath.split('.').slice(0, -1).join('.'),
-    path: fsPath,
+    path: withLeadingSlash(fsPath),
     fsPath,
   }
 }

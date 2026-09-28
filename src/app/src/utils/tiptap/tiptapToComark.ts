@@ -118,7 +118,7 @@ export async function tiptapToComark(node: JSONContent, options?: TiptapToComark
     }
   }
 
-  const nodes = comarkNodesFromTiptap(nodeCopy.content || []).filter(Boolean) as MarkdownNode[]
+  const nodes = comarkNodesFromTiptap(wrapImageInParagraph(nodeCopy.content || [])).filter(Boolean) as MarkdownNode[]
 
   const tree: MarkdownDocument = {
     nodes,
@@ -511,10 +511,9 @@ async function applyShikiSyntaxHighlighting(tree: MarkdownDocument, theme: Synta
 }
 
 /**
- * Ensure image and video blocks are wrapped in a paragraph when named slots are present.
+ * Wrap block images in a paragraph, comark renders a bare image without a block separator.
  */
 function wrapImageInParagraph(content: JSONContent[]): JSONContent[] {
-  if (!content.some(c => (c as JSONContent).type === 'slot')) return content
   return content.map(child =>
     (child as JSONContent).type === 'image'
       ? { type: 'paragraph', content: [child as JSONContent] }
