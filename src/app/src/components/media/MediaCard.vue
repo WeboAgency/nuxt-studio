@@ -4,12 +4,12 @@ import type { PropType } from 'vue'
 import { computed } from 'vue'
 import { Image } from '@unpic/vue'
 import { isImageFile } from '../../utils/file'
-import { getMediaThumbnailUrl } from '../../utils/media'
+import { getDraftMediaRaw, getMediaThumbnailUrl } from '../../utils/media'
 import { useStudio } from '../../composables/useStudio'
 import { StudioItemActionId } from '../../types'
 import MediaCardForm from './MediaCardForm.vue'
 
-const { context } = useStudio()
+const { context, mediaTree } = useStudio()
 
 const props = defineProps({
   item: {
@@ -23,7 +23,8 @@ const props = defineProps({
 })
 
 const imageSrc = computed(() => {
-  return isImageFile(props.item.fsPath) ? getMediaThumbnailUrl(props.item.routePath!) : null
+  if (!isImageFile(props.item.fsPath)) return null
+  return getDraftMediaRaw(mediaTree.draft.list.value, props.item.fsPath) || getMediaThumbnailUrl(props.item.routePath!)
 })
 </script>
 

@@ -5,9 +5,13 @@ import { useI18n } from 'vue-i18n'
 import type { ComponentMeta } from '../../../types'
 import TiptapComponentProps from '../TiptapComponentProps.vue'
 import { sanitizeMediaUrl } from '../../../utils/tiptap/props'
+import { getDraftMediaRaw } from '../../../utils/media'
+import { useStudio } from '../../../composables/useStudio'
+import { withoutLeadingSlash } from 'ufo'
 
 const nodeProps = defineProps(nodeViewProps)
 const { t } = useI18n()
+const { mediaTree } = useStudio()
 
 const isPopoverOpen = ref(false)
 
@@ -102,6 +106,8 @@ function deleteImage() {
 // Check if image has valid src
 const hasValidSrc = computed(() => !!imageAttrs.value.src)
 
+const displaySrc = computed(() => getDraftMediaRaw(mediaTree.draft.list.value, withoutLeadingSlash(imageAttrs.value.src)) || imageAttrs.value.src)
+
 // Selected state
 const isSelected = computed(() => nodeProps.selected)
 
@@ -128,7 +134,7 @@ onMounted(() => {
       <!-- Image -->
       <img
         v-if="hasValidSrc"
-        :src="imageAttrs.src"
+        :src="displaySrc"
         :alt="imageAttrs.alt"
         :title="imageAttrs.title"
         :width="imageAttrs.width || undefined"

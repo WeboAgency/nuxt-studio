@@ -80,7 +80,7 @@ const remotePath = computed(() => {
     >
       <img
         ref="imageRef"
-        :src="mediaItem.path"
+        :src="(mediaItem.raw as string | undefined) || mediaItem.path"
         :alt="$t('studio.media.altImagePreview')"
         class="max-w-full max-h-full object-contain"
       >

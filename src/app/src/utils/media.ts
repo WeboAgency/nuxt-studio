@@ -1,3 +1,5 @@
+import type { DraftItem } from '../types'
+
 export function generateStemFromFsPath(fsPath: string) {
   return fsPath.split('.').slice(0, -1).join('.')
 }
@@ -20,6 +22,17 @@ export function getMediaThumbnailUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path.slice(1) : path
   const modifiers = `s_${THUMBNAIL_SIZE}x${THUMBNAIL_SIZE},fit_cover`
   return `${IPX_PREFIX}/${modifiers}/${normalizedPath}`
+}
+
+/**
+ * Raw data of an uploaded or renamed media draft. It isn't deployed yet, so IPX and the public path can't serve it.
+ *
+ * @param drafts - Media draft list
+ * @param fsPath - Media fsPath (e.g. `images/arctic.jpg`)
+ * @returns Data URL, or undefined when the media has no pending bytes
+ */
+export function getDraftMediaRaw(drafts: DraftItem[], fsPath: string): string | undefined {
+  return drafts.find(draft => draft.fsPath === fsPath)?.modified?.raw as string | undefined
 }
 
 /**

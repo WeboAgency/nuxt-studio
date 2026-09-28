@@ -3,7 +3,7 @@ import type { PropType } from 'vue'
 import type { JSONContent } from '@tiptap/vue-3'
 import type { MarkdownDocument } from 'comark'
 import type { DraftItem, DatabasePageItem } from '../../../types'
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, toRaw } from 'vue'
 import { useStudio } from '../../../composables/useStudio'
 import { useStudioState } from '../../../composables/useStudioState'
 import { comarkToTiptap } from '../../../utils/tiptap/comarkToTiptap'
@@ -84,6 +84,8 @@ const currentComark = ref<MarkdownDocument>()
 const currentContent = ref<string>()
 
 let isConverting = false
+// Bodies emitted by this editor, a draft status flip they cause must not reset the editor
+const emittedBodies = new WeakSet<MarkdownDocument>()
 
 // TipTap to Markdown
 watch(tiptapJSON, async (json) => {
@@ -100,6 +102,7 @@ watch(tiptapJSON, async (json) => {
   const comarkTree = await tiptapToComark(cleanedTiptap, {
     highlightTheme: host.meta.editor.highlightTheme,
   })
+  emittedBodies.add(comarkTree)
 
   const updatedDocument: DatabasePageItem = {
     ...document.value!,
@@ -120,9 +123,10 @@ watch(tiptapJSON, async (json) => {
 })
 
 // Trigger on document changes
-watch(() => `${document.value?.id}-${props.draftItem.version}-${props.draftItem.status}`, async () => {
+watch([() => document.value?.id, () => props.draftItem.version, () => props.draftItem.status], async ([id], [oldId]) => {
   const comarkTree = document.value!.body
   if (!comarkTree) return
+  if (id === oldId && emittedBodies.has(toRaw(comarkTree))) return
   const newTiptapJSON = comarkToTiptap(comarkTree, { hasNuxtUI: hasNuxtUI.value })
 
   if (!tiptapJSON.value || JSON.stringify(newTiptapJSON) !== JSON.stringify(removeLastEmptyParagraph(tiptapJSON.value))) {

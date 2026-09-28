@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Image } from '@unpic/vue'
-import { getMediaFullUrl, getMediaThumbnailUrl } from '../../../utils/media'
+import { getDraftMediaRaw, getMediaFullUrl, getMediaThumbnailUrl } from '../../../utils/media'
 import type { TreeItem } from '../../../types'
+import { useStudio } from '../../../composables/useStudio'
 
 const props = defineProps<{
   media: TreeItem
@@ -14,7 +15,12 @@ const emit = defineEmits<{
   loaded: [dimensions: { width: number, height: number }]
 }>()
 
+const { mediaTree } = useStudio()
+
 const imageSrc = computed(() => {
+  const raw = getDraftMediaRaw(mediaTree.draft.list.value, props.media.fsPath)
+  if (raw) return raw
+
   const path = props.media.routePath || props.media.fsPath
   return props.fullSize ? getMediaFullUrl(path) : getMediaThumbnailUrl(path)
 })
