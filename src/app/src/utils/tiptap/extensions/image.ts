@@ -108,6 +108,7 @@ export const Image = Node.create<ImageOptions>({
   },
 
   addProseMirrorPlugins() {
+    const { name } = this
     return [
       new Plugin({
         view(editorView) {
@@ -118,7 +119,7 @@ export const Image = Node.create<ImageOptions>({
             const result = posAtCoords(coords)
             if (!editorView.dragging || !result || result.inside < 0) return result
             const node = editorView.state.doc.nodeAt(result.inside)
-            if (!node || node.type.name !== this.name) return result
+            if (!node || node.type.name !== name) return result
             const rect = (editorView.nodeDOM(result.inside) as HTMLElement).getBoundingClientRect()
             return coords.top > rect.top + rect.height / 2 ? { ...result, pos: result.inside + node.nodeSize } : result
           }

@@ -127,9 +127,8 @@ function updateVideoAttributes(attrs: Record<string, unknown>) {
 
 // Delete video
 function deleteVideo() {
-  const pos = nodeProps.getPos() as number
-  const transaction = nodeProps.editor.state.tr.delete(pos, pos + nodeProps.node.nodeSize)
-  nodeProps.editor.view.dispatch(transaction)
+  // Not `node.nodeSize`: the node prop is a reactive proxy, which reads a leaf's size as 2
+  nodeProps.deleteNode()
   isPopoverOpen.value = false
 }
 
