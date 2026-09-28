@@ -2,10 +2,13 @@ import type { CollectionInfo, Draft07DefinitionProperty, MarkdownRoot } from '@n
 import type { DatabaseItem } from 'nuxt-studio/app'
 import type { MinimarkNode, MinimarkTree } from 'minimark'
 import { visit as minimarkVisit } from 'minimark'
+import { isComarkTree } from './generate'
 
 export function sanitizeDocumentTree(document: DatabaseItem, collection: CollectionInfo) {
-  if (!document.body && (document.meta?.body as unknown as MinimarkTree)?.type === 'minimark') {
-    document.body = (document.meta?.body as unknown as MinimarkTree)
+  // Data collections have no `body` column, so `applyCollectionSchema` parks it in `meta`.
+  const metaBody = document.meta?.body
+  if (!document.body && ((metaBody as unknown as MinimarkTree)?.type === 'minimark' || isComarkTree(metaBody))) {
+    document.body = metaBody
     Reflect.deleteProperty(document.meta, 'body')
   }
 

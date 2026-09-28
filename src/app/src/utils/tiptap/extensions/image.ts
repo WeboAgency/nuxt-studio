@@ -1,6 +1,7 @@
 import type { CommandProps } from '@tiptap/core'
 import { Node, mergeAttributes } from '@tiptap/core'
 import type { SetImageOptions } from '@tiptap/extension-image'
+import { Plugin } from '@tiptap/pm/state'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import TiptapExtensionImage from '../../../components/tiptap/extension/TiptapExtensionImage.vue'
 import { sanitizeMediaUrl } from '../props'
@@ -96,7 +97,35 @@ export const Image = Node.create<ImageOptions>({
   },
 
   addNodeView() {
-    return VueNodeViewRenderer(TiptapExtensionImage)
+    const renderer = VueNodeViewRenderer(TiptapExtensionImage)
+    return (props) => {
+      const view = renderer(props)
+      const { stopEvent } = view
+      // The drag handle retargets on mousemove, which the node view swallows by default
+      if (stopEvent) view.stopEvent = (event: Event) => event.type !== 'mousemove' && stopEvent.call(view, event)
+      return view
+    }
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        view(editorView) {
+          // A block image always resolves to the position before it, so nothing could be dropped
+          // below an image that ends its slot. While dragging, its lower half targets the position after it.
+          const posAtCoords = editorView.posAtCoords.bind(editorView)
+          editorView.posAtCoords = (coords) => {
+            const result = posAtCoords(coords)
+            if (!editorView.dragging || !result || result.inside < 0) return result
+            const node = editorView.state.doc.nodeAt(result.inside)
+            if (!node || node.type.name !== this.name) return result
+            const rect = (editorView.nodeDOM(result.inside) as HTMLElement).getBoundingClientRect()
+            return coords.top > rect.top + rect.height / 2 ? { ...result, pos: result.inside + node.nodeSize } : result
+          }
+          return {}
+        },
+      }),
+    ]
   },
 
   addCommands() {

@@ -92,11 +92,8 @@ function deleteSlot() {
         </UTooltip>
       </div>
 
-      <div
-        class="pl-5 border-l-2 border-dashed border-default"
-      >
-        <NodeViewContent />
-      </div>
+      <!-- Gutter on the contentDOM itself (TipTap's inner div), so hovering it resolves to that row, not the slot start -->
+      <NodeViewContent class="*:pl-5 *:border-l-2 *:border-dashed *:border-default" />
     </div>
   </NodeViewWrapper>
 </template>

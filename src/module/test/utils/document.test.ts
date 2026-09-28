@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { applyCollectionSchema, areDocumentsEqual, isDocumentMatchingContent, sanitizeDocumentTree } from '../../src/runtime/utils/document'
+import { applyCollectionSchema, areDocumentsEqual, contentFromDocument, isDocumentMatchingContent, sanitizeDocumentTree } from '../../src/runtime/utils/document'
 import { ContentFileExtension } from '../../src/types/content'
 import type { DatabaseItem } from 'nuxt-studio/app'
 import type { CollectionInfo } from '@nuxt/content'
@@ -652,6 +652,28 @@ describe('sanitizeDocumentTree', () => {
     expect('secret' in result).toBe(false)
     expect(result.public).toBe('should stay')
     expect(result.misc).toBe('also stays')
+  })
+
+  it('restores a markdown body that applyCollectionSchema moved to meta for a data collection', async () => {
+    const collection = {
+      type: 'data',
+      name: 'settings',
+      schema: { definitions: { settings: { properties: { phone: { type: 'string' } } } } },
+    } as unknown as CollectionInfo
+
+    const document = {
+      id: 'settings/_settings.md',
+      extension: 'md',
+      stem: '_settings',
+      meta: {},
+      phone: '+48 660 507 051',
+      body: { nodes: [['p', {}, 'Site settings']], frontmatter: { phone: '+48 660 507 051' }, meta: {} },
+    } as unknown as DatabaseItem
+
+    const stored = applyCollectionSchema(document.id, collection, document)
+    const result = sanitizeDocumentTree(stored, collection)
+
+    expect(await contentFromDocument(result)).toBe('---\nphone: +48 660 507 051\n---\n\nSite settings\n')
   })
 })
 
